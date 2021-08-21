@@ -10,52 +10,100 @@ import slone
 
 const MAX_STRING_LEN = 128
 
-let bigTestString = """
-#! SLONE 1.0
-"firstName" = "John"
-"lastName" = "Doe"
-"age" = "33"
-"mailing address" = <<
-  "101 Main St"
-  "Centerville, IA 32323"
->>
-"packing address" = <<<
-  "101 Main St\n"
-  "Centerville, IA 32323"
->>>
-"firstEmpty" = <<
->>
-"almostBinary" = <<<
-  "01234567"
-  "89ABCDEF"
->>>
-"kudoPoints" = {{
-  "3.2"
-  "4.1"
-  "1.0"
-  ?
-  "3.9"
-  {{
-    "a"
-    "b"
-  }}
-}}
-"fundHistory" = {{
-}}
-"randomDetails" = {
-}
-"subscriber_number" = "9832"
-"friends" = {
-  "best" = {
-    "fullName" = "Larry \"BigGuy\" Smith"
-    "dir" = ?
+# let bigTestString = """
+# #! SLONE 1.0
+# "firstName" = "John"
+# "lastName" = "Doe"
+# "age" = "33"
+# "mailing address" = <<
+#   "101 Main St"
+#   "Centerville, IA 32323"
+# >>
+# "packing address" = <<<
+#   "101 Main St\n"
+#   "Centerville, IA 32323"
+# >>>
+# "firstEmpty" = <<
+# >>
+# "almostBinary" = <<<
+#   "01234567"
+#   "89ABCDEF"
+# >>>
+# "kudoPoints" = {{
+#   "3.2"
+#   "4.1"
+#   "1.0"
+#   ?
+#   "3.9"
+#   {{
+#     "a"
+#     "b"
+#   }}
+# }}
+# "fundHistory" = {{
+# }}
+# "randomDetails" = {
+# }
+# "subscriber_number" = "9832"
+# "friends" = {
+#   "best" = {
+#     "fullName" = "Larry \"BigGuy\" Smith"
+#     "dir" = ?
+#   }
+#   "next best" = {
+#     "fullName" = "Linda"
+#     "dir" = "C:\\5938\\4"
+#   }
+# }
+# """
+
+let bigTestString = dedent """
+  #! SLONE 1.0 en
+  "firstName" = str "John"
+  "lastName" = str "Doe"
+  "age" = int64 "33"
+  "height" = decimal128 "1.6"
+  "mailing address" = passage <
+    | "101 Main St"
+    | "Centerville, IA 32323"
+  >
+  "firstEmpty" = passage <
+  >
+  "almostBinary" = hex "0123456789ABCDEF"
+  "kudoPoints" = [
+    decimal128 "3.2"
+    decimal128 "4.1"
+    decimal128 "1.0"
+    ?
+    decimal128 "3.9"
+    {{
+      str "a"
+      str "b"
+    }}
+  ]
+  "fundHistory" = [
+  ]
+  "randomDetails" = {  
   }
-  "next best" = {
-    "fullName" = "Linda"
-    "dir" = "C:\\5938\\4"
+  "subscriber_number" = str "9832"
+  "friends" = {
+    "best" = {
+      "fullName" = str "Larry \"BigGuy\" Smith"
+      "dir" = ?
+    }
+    "next best" = {
+      "fullName" = str "Linda"
+      "dir" = str "C:\\5938\\4"
+    }
   }
-}
+  "ownType" = & "color" "blue"
+  "passageType" = & "poem" <
+    | "roses are red"
+    | "violets are blue"
+  >
 """
+
+
 
 let expectedJsonPretty = """{
   "firstName": "John",
