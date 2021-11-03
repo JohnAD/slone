@@ -89,18 +89,18 @@
 ##     var id = genUUID()
 ##     var age: Option[int32] = null
 ## 
-##     var doc = newSlone(1.0, schemaFile="person.slone")
+##     var doc = newLone()
 ##     doc["person_id"] = id                             # a real UUID is serialized as a string (from slone/uuids lib)
 ##     doc["full name"] = "Joe Smith"
 ##     doc["age"] = age
-##     doc["address"] = newLone()
-##     doc["address"].add(nothing, "123 Main St")
-##     doc["address"].add(nothing, "Anytown, ST 12345")
+##     doc["mailing address"] = newLone()
+##     doc["mailing address"].add(nothing, "123 Main St")
+##     doc["mailing address"].add(nothing, "Anytown, ST 12345")
 ##
-##     echo $doc                                         # serialized and re-ordered per schema; with full type annotations
-##     echo doc.serializeUntyped()                       # serialized and re-ordered per schema; but with no type annotations 
-## 
-
+##     echo $doc                                                  # serialized but without schema or types
+##     echo doc.seriallize(1.0, schemaFile="person.slone")        # serialized and re-ordered per schema; with full type annotations
+##     echo doc.serializeUntyped(1.0, schemaFile="person.slone")  # serialized and re-ordered per schema; but with no type annotations 
+##
 import
   std/options,
   std/strutils
