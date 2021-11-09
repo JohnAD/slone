@@ -18,9 +18,9 @@ toSlone
 
     .. code:: nim
 
-        proc toSlone*(doc: Lone): string =
+        proc toSlone*(doc: Lone, types: bool = true): string =
 
-    source line: `251 <../src/slone.nim#L251>`__
+    source line: `242 <../src/slone.nim#L242>`__
 
 
 
