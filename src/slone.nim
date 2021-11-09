@@ -190,48 +190,119 @@ import
   lone
 
 const
-  SPACE = " "
-  QUOTE = "\""
-  EQUALS = "="
-  EOL = "\n"
-  NULL = "?"
-  NOTHING = "_"
-  DOC_START = "{"
-  DOC_STOP = "}"
   INDENT = "  "
-  COLON = ":"
-
+  SPACE = ' '
+  QUOTE = '\"'
+  EQUALS = '='
+  EOL = '\n'
+  NULL = '?'
+  NOTHING = '_'
+  DOC_START = '{'
+  DOC_STOP = '}'
+  COLON = ':'
+  BACKSLASH = '\\'
+  BAR = '|'
+  TAB = '\t'
+  VT = '\v'
+  FF = '\f'
+  CR = '\r'
+  ESC = '\e'
 
 type
   SerializerDetail = object
     indentLevel: int
+    showTypes: bool
 
 # TODO: when you get bored, rewrite the serializer to be non-recursive
 
 # fwd ref:
 proc serializeLone(detail: var SerializerDetail, doc: Lone): string
 
+proc escaped(content: string, start: int, stop: int): string =
+  # | \t      | 9       | 09  | tab (horizontal) |
+  # | \n      | 10      | 0A  | new line |
+  # | \v      | 11      | 0B  | vertical tab |
+  # | \f      | 12      | 0C  | form feed |
+  # | \r      | 13      | 0D  | carriage return |
+  # | \e      | 27      | 1B  | escape |
+  # | \"      | 34      | 22  | double quote |
+  # | \\      | 92      | 5D  | backslash |
+  if start == stop:
+    return
+  for i in start .. stop:
+    let ch = content[i]
+    if ch == TAB:
+      result &= BACKSLASH & "t"
+    elif ch == EOL:
+      result &= BACKSLASH & "n"
+    elif ch == VT:
+      result &= BACKSLASH & "v"
+    elif ch == FF:
+      result &= BACKSLASH & "f"
+    elif ch == CR:
+      result &= BACKSLASH & "r"
+    elif ch == ESC:
+      result &= BACKSLASH & "e"
+    elif ch == QUOTE:
+      result &= BACKSLASH & QUOTE
+    elif ch == BACKSLASH:
+      result &= BACKSLASH & BACKSLASH
+    else:
+      result &= ch
+    # TODO: handle general control characters
+
+proc stringify(detail: var SerializerDetail, content: string): string =
+  # TODO: make this work with unicode properly
+  var remaining = content.len()
+  let lastIndex = remaining - 1
+  if remaining <= 80:
+    result = QUOTE & escaped(content, 0, lastIndex) & QUOTE
+  else:
+    result = BAR & EOL
+    var index = 0
+    var nextIndex = 0
+    var segment = ""
+    while remaining > 0:
+      if remaining <= 40:
+        segment = escaped(content, index, lastIndex)
+        remaining = 0
+      else:
+        nextIndex = index + 40
+        while nextIndex < (index + 80):
+          let ch = content[nextIndex]
+          if ch == EOL:
+            break
+          if nextIndex >= lastIndex:
+            break
+          nextIndex += 1
+        segment = escaped(content, index, nextIndex)
+        let removed = nextIndex - index
+        index += removed
+        remaining -= removed
+      result &= INDENT.repeat(detail.indentLevel + 1) & QUOTE & segment & QUOTE & EOL
+    result &= INDENT.repeat(detail.indentLevel) & BAR
+
 proc serializeName(detail: var SerializerDetail, doc: Lone): string =
   if doc.name.isSome:
-    result = QUOTE & doc.name.get & QUOTE
+    result = stringify(detail, doc.name.get)
   else:
-    result = NOTHING
+    result = $NOTHING
 
 proc serializeValue(detail: var SerializerDetail, doc: Lone): string =
   case doc.kind:
   of LvNull:
-    result = NULL
+    result = $NULL
   of LvNothing:
-    result = NOTHING
+    result = $NOTHING
   of LvString:
-    result = QUOTE & doc.str & QUOTE
+    result = stringify(detail, doc.str)
   of LvLone:
-    result = DOC_START & EOL
+    result = $DOC_START & $EOL
     detail.indentLevel += 1
     result &= serializeLone(detail, doc)
     detail.indentLevel -= 1
     result &= INDENT.repeat(detail.indentLevel)
-    result &= DOC_STOP
+    result &= $DOC_STOP
 
 proc serializeLone(detail: var SerializerDetail, doc: Lone): string =
   for entry in doc:
@@ -240,16 +311,18 @@ proc serializeLone(detail: var SerializerDetail, doc: Lone): string =
     # handle name
     result &= serializeName(detail, entry) & SPACE
     # handle type
-    if entry.attrType.isSome:
-      result &= COLON & SPACE & entry.attrType.get & SPACE
+    if detail.showTypes:
+      if entry.attrType.isSome:
+        result &= $COLON & $SPACE & entry.attrType.get & $SPACE
     # handle equals
-    result &= EQUALS & SPACE 
+    result &= $EQUALS & $SPACE 
     # handle value
     result &= serializeValue(detail, entry) 
-    result &= EOL
+    result &= $EOL
 
-proc toSlone*(doc: Lone): string =
-  result = "#! SLONE 1.0" & EOL
+proc toSlone*(doc: Lone, types: bool = true): string =
+  result = "#! SLONE 1.0" & $EOL
   var detail = SerializerDetail()
   detail.indentLevel = 0
+  detail.showTypes = types
   result &= serializeLone(detail, doc)

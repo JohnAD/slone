@@ -216,7 +216,7 @@ suite "Serialize (no schema)":
         "name" : name = "Larry Smith"
       }
     """
-  test "deeper lone object to string with compound brackets":
+  test "deeper lone object to slone string with compound brackets":
     # arrange
     var a = newLone()
     a["name"] = ("name", "John Doe")
@@ -239,5 +239,33 @@ suite "Serialize (no schema)":
       }
       "friend" : person = {
         "name" : name = "Larry Smith"
+      }
+    """
+  test "lone object to slone string without types":
+    # arrange
+    var a = newLone()
+    a["name"] = ("name", "John Doe")
+    a["personal number"] = ("phone", "+15555551234")
+    a["age"] = ("years", "33")
+    a["favorite fruit"] = newLone()
+    a["favorite fruit"]["common_name"] = "bananna"
+    a["friend"] = ("person", newLone())
+    a["friend"]["name"] = ("name", "Larry Smith")
+    a["empty"] = newLone()
+    # act
+    var result = a.toSlone(types=false)
+    # assert
+    check result == dedent """
+      #! SLONE 1.0
+      "name" = "John Doe"
+      "personal number" = "+15555551234"
+      "age" = "33"
+      "favorite fruit" = {
+        "common_name" = "bananna"
+      }
+      "friend" = {
+        "name" = "Larry Smith"
+      }
+      "empty" = {
       }
     """
