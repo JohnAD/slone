@@ -269,3 +269,47 @@ suite "Serialize (no schema)":
       "empty" = {
       }
     """
+
+
+suite "Deserialize (no schema)":
+  test "shallow lone":
+    # arrange
+    let docText = dedent """
+      #! SLONE 1.0
+      "name" = "John Doe"
+      "personal number" = "+15555551234"
+      "age" = "33"
+    """
+    # act
+    var result = docText.toLone()
+    # assert
+    check result["name"] == "John Doe"
+    check result["personal number"] == "+15555551234"
+    check result["age"] == "33"
+  test "deep lone":
+    # arrange
+    let docText = dedent """
+      #! SLONE 1.0
+      "name" = "John Doe"
+      "personal number" = "+15555551234"
+      "favorite fruit" = {
+        "common_name" = "bananna"
+      }
+      "age" = "33"
+      "ruleSet" = {
+        _ = "2"
+        _ = "99"
+      }
+    """
+    # act
+    var result = docText.toLone()
+    # assert
+    echo "dump"
+    echo result.dump()
+    echo result.toSlone()
+    check result["name"] == "John Doe"
+    check result["personal number"] == "+15555551234"
+    check result["favorite fruit"]["common_name"] == "bananna"
+    check result["age"] == "33"
+    check result["ruleSet"][0] == "2"
+    check result["ruleSet"][1] == "99"

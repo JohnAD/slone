@@ -103,7 +103,8 @@
 ##
 import
   std/options,
-  std/strutils
+  std/strutils,
+  std/unicode
 
 import
   lone
@@ -146,7 +147,7 @@ proc escaped(content: string, start: int, stop: int): string =
   # | \e      | 27      | 1B  | escape |
   # | \"      | 34      | 22  | double quote |
   # | \\      | 92      | 5D  | backslash |
-  if start == stop:
+  if start > stop:
     return
   for i in start .. stop:
     let ch = content[i]
@@ -245,3 +246,154 @@ proc toSlone*(doc: Lone, types: bool = true): string =
   detail.indentLevel = 0
   detail.showTypes = types
   result &= serializeLone(detail, doc)
+
+
+
+type
+  SerializationState = enum
+    ssTabbing,
+    ssName,
+    ssNameSpace,
+    ssType,
+    ssTypeSpace,
+    ssEquals,
+    ssEqualsSpace,
+    ssValuePending,
+    ssValueString,
+    ssValueNull,
+    ssEOL,
+    ssDoneDueToError
+
+type
+  DeserializerObject = object
+    doc: string
+    docLen: int
+    runeIndex: int
+    charIndex: int
+    lineIndex: int
+
+# fwd ref:
+proc parseObject(d: var DeserializerObject): Lone
+
+
+proc parseSubObject(d: var DeserializerObject): Lone =
+  if (d.runeIndex < d.docLen):
+    d.charIndex += 1
+    d.runeIndex += 1
+    let r = d.doc.runeAt(d.runeIndex)
+    if $r == $EOL:
+      result = parseObject(d)
+    else:
+      echo "Bad character `" & $r & "` found at line " & $d.lineIndex & " char " & $d.charIndex
+  else:
+    echo "Object terminated early at line " & $d.lineIndex & " char " & $d.charIndex
+
+
+proc parseObject(d: var DeserializerObject): Lone =
+  template nextLine() =
+    d.charIndex = 0
+    d.lineIndex += 1
+    tabChars = 0
+  template doErr() = 
+    echo "Bad character `" & $r & "` found at line " & $d.lineIndex & " char " & $d.charIndex
+    echo "In state " & $state
+    state = ssDoneDueToError
+  result = Lone(kind: LvLone)
+  var name = some("")
+  var valueKind = LvNull
+  var valueString = ""
+  var state = SerializationState.ssTabbing
+  var prefixCtr = 0
+  var schema = ""
+  var firstQuote = false
+  var lastQuote = false
+  var tabChars = 0
+  #
+  while (d.runeIndex < d.docLen):
+    d.charIndex += 1
+    d.runeIndex += 1
+    let r = d.doc.runeAt(d.runeIndex)
+    case state:
+    of ssTabbing:
+      if $r == $QUOTE:
+        state = ssName
+        name = some("")
+      elif $r == $NOTHING:
+        state = ssNameSpace
+        name = none(string)
+      elif $r == $SPACE:
+        tabChars += 1
+      elif $r == $DOC_STOP:
+        break
+      else:
+        doErr()
+    of ssName:
+      if $r == $QUOTE:
+        state = ssNameSpace
+      elif $r == $EOL:
+        doErr()
+      else:
+        name.get &= $r
+    of ssNameSpace:
+      if $r == $SPACE:
+        state = ssEquals
+      else:
+        doErr()
+    of ssType:
+      discard # TODO
+    of ssTypeSpace:
+      discard # TODO
+    of ssEquals:
+      if $r == $EQUALS:
+        state = ssEqualsSpace
+      else:
+        doErr()
+      discard
+    of ssEqualsSpace:
+      if $r == $SPACE:
+        state = ssValuePending
+      else:
+        doErr()
+    of ssValuePending:
+      if $r == $QUOTE:
+        valueString = ""
+        valueKind = LvString
+        state = ssValueString
+      elif $r == $DOC_START:
+        valueKind = LvLone
+        result.append(name, parseSubObject(d))
+        state = ssEOL
+      else:
+        doErr() # TODO: support the other kinds of values
+    of ssValueString:
+      if $r == $QUOTE:
+        state = ssEOL
+        result.append(name, valueString)
+      elif $r == $EOL:
+        doErr()
+      else:
+        valueString &= $r
+    of ssValueNull:
+      discard
+    of ssEOL:
+      if $r == $EOL:
+        state = ssTabbing  # TODO change to tabbing later
+        nextLine()
+      else:
+        doErr()
+    of ssDoneDueToError:
+      discard
+
+
+proc toLone*(doc: string): Lone =
+  # TODO: later support schema
+  var d = DeserializerObject()
+  d.doc = doc
+  d.runeIndex = -1 # just before first character at 0
+  d.charIndex = 0
+  d.lineIndex = 0
+  d.docLen = doc.toRunes().len - 1
+
+  d.runeIndex += len("#! SLONE 1.0\n")
+  d.lineIndex += 1
+  result = parseObject(d)
